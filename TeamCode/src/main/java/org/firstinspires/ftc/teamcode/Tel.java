@@ -1,39 +1,46 @@
 package org.firstinspires.ftc.teamcode;
 
 import static java.lang.Math.abs;
+import static java.lang.Math.exp;
+import static java.lang.Thread.sleep;
 
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.ServoImplEx;
 
-@TeleOp(name = "O testare")
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+
+@TeleOp(name = "Main")
 public class Tel extends OpMode {
-    private DcMotorEx turela, frontRight, frontLeft, backRight, backLeft, shooter;
-    private ServoImplEx Saruncare;
+    private DcMotorEx frontRight, frontLeft, backRight, backLeft;
     private Limelight3A limelight3A;
     boolean stop;
     double sm = 1;
-    double y, x, rx;
     double max = 0;
     double FL, BL, BR, FR;
+    sistemeTeleOp m = new sistemeTeleOp();
     //PIDF
     private final double TkP = 0.008, TkI = 0.0, TkD = 0.08, SkP = 10.23, SkI = 0.0, SkF = 14.95, SkD = 10.58;
     private final int TURRET_MIN_POS = 309;
     private final int TURRET_MAX_POS = 647;
     private final int TURRET_INIT_POS = 490;
-    public boolean taranie = false, abis = false, jay = false, Ungur = false, MiklosUngur = false;
-    private double integral = 0, lastError = 0, tx = 0, power;
-    int pos, posFR, posFL, posBR, posBL;
+    public boolean taranie = false, abis = false, jay = false, Ungur = false, MiklosUngur = false, RichiUngur = false, Ungur2 = false, Invartitoare = false, SeInvarteMiklos = false;
+    private double integral = 0, lastError = 0, tx = 0, imata;
+    int pos, albastru = 0, rosu = 0, verde = 0, loculete;
 
 
     @Override
     public void init() {
+        m.initsisteme(hardwareMap);
 
         frontLeft = hardwareMap.get(DcMotorEx.class, "frontLeft");
         backLeft = hardwareMap.get(DcMotorEx.class, "backLeft");
@@ -48,12 +55,7 @@ public class Tel extends OpMode {
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
-        frontLeft.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        frontRight.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        backLeft.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-        backRight.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
-
-//        frontLeft.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        //        frontLeft.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
 //        frontRight.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
 //        backLeft.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
 //        backRight.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
@@ -63,31 +65,22 @@ public class Tel extends OpMode {
 //        backRight.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
 //        backLeft.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
 
-        shooter = hardwareMap.get(DcMotorEx.class, "shooter");
-        shooter.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        shooter.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontLeft.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotorEx.RunMode.RUN_WITHOUT_ENCODER);
 
+        while (Math.abs(pos - TURRET_INIT_POS) > 3) {
+            pos = m.turela.getCurrentPosition();
+            double direction = Math.signum(TURRET_INIT_POS - pos);
+            m.turela.setPower(0.09 * direction);
+        }
+        m.turela.setPower(0);
 
-        turela = hardwareMap.get(DcMotorEx.class, "turela");
-        turela.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        turela.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-
-        do {
-            pos = turela.getCurrentPosition();
-            if (pos >= TURRET_INIT_POS) {
-                turela.setPower(-0.03);
-            } else if (pos <= TURRET_INIT_POS) {
-                turela.setPower(0.03);
-            }
-        } while (pos == TURRET_INIT_POS);
-
-        Saruncare = hardwareMap.get(ServoImplEx.class, "aruncare");
 
         limelight3A = hardwareMap.get(Limelight3A.class, "limelight");
         limelight3A.pipelineSwitch(0);
         limelight3A.start();
-
 
     }
 
@@ -145,86 +138,117 @@ public class Tel extends OpMode {
         @Override
         public void run() {
             while (!stop) {
-
-
-                /// Turela buton Trigger
-                pos = turela.getCurrentPosition();
-                boolean abut = gamepad1.y;
-                if (taranie != abut) {
-                    if (gamepad1.y) {
+                imata = m.distanta.getDistance(DistanceUnit.CM);
+                rosu = m.color.red();
+                albastru = m.color.blue();
+                verde = m.color.green();
+                /// Turela toggle
+                boolean mata = gamepad1.dpad_right;
+                if (taranie != mata) {
+                    if (mata) {
                         abis = !abis;
                     }
-                    taranie = abut;
+                    taranie = mata;
                 }
 
+                /// Intake
+                boolean Richi = gamepad1.a;
+                if (Ungur2 != Richi) {
+                    if (gamepad1.a) {
+                        RichiUngur = !RichiUngur;
+                        if (RichiUngur && loculete != 3) {
+                            m.intake.setPower(1);
+                            if (imata >= 7.5 && loculete == 0) {
+                                m.kdf(1000);
+                                m.sortare.setPosition(Pozitii.luarea2);
+                                loculete++;
+                            } else if (imata >= 7.5 && loculete == 1) {
+                                m.kdf(1000);
+                                m.sortare.setPosition(Pozitii.luarea3);
+                                loculete++;
+                            }
+                            else if (imata >= 7.5 && loculete == 2) {
+                                m.kdf(1000);
+                                loculete++;
+                            }
+                        } else {
+                            m.sortare.setPosition(Pozitii.luarea1);
+                            m.intake.setPower(0);
+                        }
+                    }
+                    Ungur2 = Richi;
+                }
 
                 ///Servo Aruncare in shooter
-                boolean african = gamepad1.x;
+                boolean african = gamepad1.y;
                 if (jay != african) {
                     if (jay) {
-                        Saruncare.setPosition(0.3665);
+                        m.Saruncare.setPosition(Pozitii.lansare);
                     } else {
-                        Saruncare.setPosition(0.621);
+                        //TODO: Schimbale daca nu sunt okay
+                        m.Saruncare.setPosition(Pozitii.coborare);
                     }
                     jay = african;
                 }
 
-
                 ///Shooter
                 PIDFCoefficients pid = new PIDFCoefficients(SkP, SkI, SkD, SkF);
-                shooter.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, pid);
+                m.shooter.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, pid);
 
-                boolean Miklos = gamepad1.a;
+                boolean Miklos = gamepad1.x;
                 if (Ungur != Miklos) {
-                    if (gamepad1.a) {
+                    if (gamepad1.x) {
                         MiklosUngur = !MiklosUngur;
                         if (MiklosUngur) {
-                            shooter.setVelocity(2000);
+                            loculete--;
+                            m.shooter.setVelocity(2000);
                         } else {
-                            shooter.setVelocity(0);
+                            m.shooter.setVelocity(0);
                         }
                     }
                     Ungur = Miklos;
                 }
 
-
             }
         }
     });
 
-
-    /// Ce trebuie sa faca turela
     private final Thread Turela = new Thread(new Runnable() {
-
         @Override
         public void run() {
+            while (!stop) {
+                if (abis) {
 
-            while (!stop && abis) {
+                    LLResult result = limelight3A.getLatestResult();
+                    pos = m.turela.getCurrentPosition();
 
-                if ((pos >= TURRET_MIN_POS) || (pos <= TURRET_MAX_POS)) {
+                    if (result.isValid() && pos >= TURRET_MIN_POS && pos <= TURRET_MAX_POS) {
 
-                    do {
-                        LLResult result = limelight3A.getLatestResult();
-                        if (result.isValid() && (pos >= TURRET_MIN_POS) || (pos <= TURRET_MAX_POS)) {
-                            tx = result.getTx();
-                            double error = tx;
-                            integral += error;
-                            double derivative = error - lastError;
+                        double tx = result.getTx();
+                        double error = tx;
 
-                            power = TkP * error + TkI * integral + TkD * derivative;
+                        integral += error;
+                        double derivative = error - lastError;
 
-                            turela.setPower(power);
+                        double power = TkP * error + TkI * integral + TkD * derivative;
+                        m.turela.setPower(power);
 
-                            lastError = error;
+                        lastError = error;
+//                    } else {
+//                        if (pos >= TURRET_MAX_POS) {
+//                            turela.setPower(-0.1);
+//                        } else if (pos <= TURRET_MIN_POS) {
+//                            turela.setPower(0.1);
+//                        } else {
+//                            turela.setPower(0.1);
+//                        }
 
-                        } else if (pos >= TURRET_MAX_POS && !result.isValid() || tx == 0)
-                            power = 0.01;
-                        else if (pos <= TURRET_MIN_POS && !result.isValid() || tx == 0)
-                            power = 0.0;
-                    } while (Math.abs(tx) > 0.05);
+                    }
+                } else {
+                    m.turela.setPower(0);
+                    lastError = 0;
+                    integral = 0;
                 }
-                turela.setPower(0);
-
             }
         }
     });
@@ -237,9 +261,14 @@ public class Tel extends OpMode {
     public void loop() {
         telemetry.addData("tx", tx);
         telemetry.addData("pos", pos);
-        telemetry.addData("power", power);
         telemetry.addData("ab", abis);
         telemetry.addData("jay", jay);
+        telemetry.addData("velocity", m.shooter.getVelocity());
+        telemetry.addData("Red", rosu);
+        telemetry.addData("Green", verde);
+        telemetry.addData("Blue", albastru);
+        telemetry.addData("Distanta", imata);
+        telemetry.addData("loculete", loculete);
 //        telemetry.addLine("==============");
 //        telemetry.addData("fr", posFR);
 //        telemetry.addData("fl", posFL);

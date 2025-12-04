@@ -12,8 +12,9 @@ public class servoGasire  extends LinearOpMode {
     double pos= 0.5;
     @Override
     public void runOpMode(){
-        aruncare = hardwareMap.get(ServoImplEx.class, "aruncare");
-
+        aruncare = hardwareMap.get(ServoImplEx.class, "sortare");
+// 1 luare 0.263 2 luare 0.623 3 luare 1
+        // 1 aruncare 0.803 3 aruncare 0.443 2 aruncare 0.062
 
         waitForStart();
         while (opModeIsActive()){

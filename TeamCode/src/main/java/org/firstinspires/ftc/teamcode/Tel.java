@@ -13,7 +13,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.ServoImplEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -21,7 +20,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 @TeleOp(name = "Main")
 public class Tel extends OpMode {
     private DcMotorEx frontRight, frontLeft, backRight, backLeft, turela, shooter, intake;
-    private ServoImplEx Saruncare, sortare;
+    private ServoImplEx Saruncare, sortare,unghiD,unghiS;
     private Limelight3A limelight3A;
     private ColorSensor color;
     private DistanceSensor distanta;
@@ -33,9 +32,9 @@ public class Tel extends OpMode {
 
     //PIDF
     private final double TkP = 0.008, TkI = 0.0, TkD = 0.08, SkP = 10.23, SkI = 0.0, SkF = 14.95, SkD = 10.58;
-    public boolean turelaTracking = false, tracking = false, ShooterPornit = false, Spornit = false, IntakeFull = false, Ipornit = false, IntakePornit = false, ButonulRosu = false, ResetareISortare = false;
-    private double integral = 0, lastError = 0, imata, tx = 0, power = 0;
-    int pos, albastru = 0, rosu = 0, verde = 0, loculete = 0;
+    public boolean turelaTracking = false, tracking = false, ShooterPornit = false, Spornit = false, IntakeFull = false, Ipornit = false, IntakePornit = false, ButonulRosu = false, ResetareISortare = false, ResetareSSortare = false;
+    private double integral = 0, lastError = 0, imata, tx = 0, power = 0, posU = Pozitii.max_sus;
+    int pos, albastru = 0, rosu = 0, verde = 0, loculete = 0, idTag = 2;
 
 
     @Override
@@ -83,6 +82,9 @@ public class Tel extends OpMode {
         Saruncare.setPosition(Pozitii.coborare);
         sortare = hardwareMap.get(ServoImplEx.class, "sortare");
         sortare.setPosition(Pozitii.luarea1);
+        unghiD = hardwareMap.get(ServoImplEx.class, "unghiD");
+        unghiS = hardwareMap.get(ServoImplEx.class, "unghiS");
+
 
         distanta = hardwareMap.get(DistanceSensor.class, "distanta");
 
@@ -95,8 +97,11 @@ public class Tel extends OpMode {
         intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
 
+        unghiD.setPosition(posU);
+        unghiS.setPosition(posU);
+
         limelight3A = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight3A.pipelineSwitch(3);
+        limelight3A.pipelineSwitch(0);
         limelight3A.start();
     }
 
@@ -114,8 +119,6 @@ public class Tel extends OpMode {
         @Override
         public void run() {
             while (!stop) {
-                imata = distanta.getDistance(DistanceUnit.CM);
-                verde = color.green();
 
                 /// Turela toggle
                 boolean dpad_right1 = gamepad1.dpad_right;
@@ -125,8 +128,16 @@ public class Tel extends OpMode {
                     }
                     turelaTracking = dpad_right1;
                 }
-
-
+                if(gamepad1.dpad_up){
+                    posU += 0.003;
+                }
+                if(gamepad1.dpad_down){
+                    posU -= 0.003;
+                }
+                if(posU <= Pozitii.max_jos && posU >= Pozitii.max_sus) {
+                    unghiD.setPosition(posU);
+                    unghiS.setPosition(posU);
+                }
                 /// Intake
                 boolean gamepad1_a = gamepad1.a;
                 if (IntakePornit != gamepad1_a) {
@@ -144,13 +155,14 @@ public class Tel extends OpMode {
                     ShooterPornit = gamepad1_x;
                 }
 
-                /// Resetare Sortare Intake
-                boolean gamepad2_a = gamepad2.a;
-                if (ResetareISortare != gamepad2_a) {
-                    if (gamepad2.a) {
+
+                /// Resetare Sortare shooter
+                boolean gamepad2_b = gamepad2.b;
+                if (ResetareSSortare != gamepad2_b) {
+                    if (gamepad2.b) {
                         ButonulRosu = !ButonulRosu;
                     }
-                    ResetareISortare = gamepad2_a;
+                    ResetareSSortare = gamepad2_b;
                 }
             }
         }
@@ -160,6 +172,7 @@ public class Tel extends OpMode {
         @Override
         public void run() {
             while (!stop) {
+
                 if (tracking) {
                     pos = turela.getCurrentPosition();
                     LLResult result = limelight3A.getLatestResult();
@@ -175,16 +188,6 @@ public class Tel extends OpMode {
 
                         lastError = tx;
 
-//                    }
-//                    else {
-//                        if (pos >= Pozitii.TURRET_MAX_POS) {
-//                            turela.setPower(-0.1);
-//                        } else if (pos <= Pozitii.TURRET_MIN_POS) {
-//                            turela.setPower(0.1);
-//                        } else {
-//                            turela.setPower(0.1);
-//                        }
-
                     }
                 } else {
                     turela.setPower(0);
@@ -194,108 +197,298 @@ public class Tel extends OpMode {
             }
         }
     });
-
-    private enum SortareIntake {
-        IDLE,
-        ASTEPTARE,
-        Luare1,
-        Luare2,
-        Luare3,
-        FULL
-    }
-
-    private SortareIntake Istare = SortareIntake.IDLE;
     private final Thread Sortare = new Thread(new Runnable() {
         @Override
         public void run() {
             while (!stop) {
-                if (Ipornit && loculete < 3) {
-                    intake.setPower(1);
-                    switch (Istare) {
-                        case IDLE:
-                            Istare = SortareIntake.Luare1;
-                            break;
-                        case ASTEPTARE:
-                            if (imata < 20 && intake.isBusy()) {
-                                if (loculete == 0) Istare = SortareIntake.Luare1;
-                                else if (loculete == 1) Istare = SortareIntake.Luare2;
-                                else if (loculete == 2) Istare = SortareIntake.Luare3;
-                                else if (loculete == 3) Istare = SortareIntake.FULL;
+                if (Ipornit) {
+                    if (loculete >= 0 && loculete <=3 && !IntakeFull) {
+                        intake.setPower(1);
+                        while (loculete <= 3) {
+                            imata = distanta.getDistance(DistanceUnit.CM);
+
+                            if (imata < 20 && loculete == 0) {
+                                sortare.setPosition(Pozitii.luarea2);
+                                loculete++;
+                                m.kdf(950);
+                                break;
                             }
-                            break;
-                        case Luare1:
-                            sortare.setPosition(Pozitii.luarea2);
-                            m.kdf(950);
-                            loculete = 1;
-                            Istare = SortareIntake.ASTEPTARE;
-                            break;
-
-                        case Luare2:
-                            sortare.setPosition(Pozitii.luarea3);
-                            m.kdf(950);
-                            loculete = 2;
-                            Istare = SortareIntake.ASTEPTARE;
-                            break;
-
-                        case Luare3:
-                            m.kdf(950);
-                            loculete = 3;
-                            Istare = SortareIntake.FULL;
-                            break;
-                        case FULL:
-                            intake.setPower(0);
-                            IntakeFull = true;
-
-                            if (ButonulRosu) {
-                                loculete = 0;
-                                IntakeFull = false;
-                                Istare = SortareIntake.IDLE;
+                            if (imata < 20 && loculete == 1) {
+                                sortare.setPosition(Pozitii.luarea3);
+                                loculete++;
+                                m.kdf(950);
+                                break;
                             }
-                            break;
+                            if (imata < 20 && loculete == 2) {
+                                IntakeFull = true;
+                                loculete++;
+                                break;
+                            }
+                            if (loculete == 3) {
+                                sortare.setPosition(Pozitii.aruncare1);
+                                loculete++;
+                                intake.setPower(0);
+                                break;
+                            }
+                        }
                     }
-//                    while(loculete <= 3) {
-//                        intake.setPower(1);
-//                        if (imata < 20 && loculete == 0) {
-//                            sortare.setPosition(Pozitii.luarea2);
-//                            loculete++;
-//                            m.kdf(950);
-//                            break;
-//                        }
-//                        if (imata < 20 && loculete == 1) {
-//                            sortare.setPosition(Pozitii.luarea3);
-//                            loculete++;
-//                            m.kdf(1000);
-//                            break;
-//                        }
-//                        if (imata < 20 && loculete == 2) {
-//                            richiChelioasa = true;
-//                            loculete++;
-//                        }
-//                    }
 
 
                 } else {
-                    sortare.setPosition(Pozitii.luarea1);
                     intake.setPower(0);
 
                 }
-                try {
-                    Thread.sleep(20);
-                } catch (InterruptedException e) {
+            }
+        }
+    });
+    private enum SortareShooter {
+        SIDLE,
+        Incarca,
+        CautaSiImpuscai,
+        GATA
+    }
+
+    private SortareShooter Sstare = SortareShooter.SIDLE;
+    private int[] cPattern = new int[3];
+    private boolean[] ocupat = new boolean[3];
+
+    private final Thread Shooter = new Thread(new Runnable() {
+        @Override
+        public void run() {
+
+            while (!stop) {
+
+                if (!(Spornit && IntakeFull && loculete > 0 && loculete <= 3)) {
+                    shooter.setVelocity(0);
+                    Sstare = SortareShooter.SIDLE;
+                    m.kdf(100);
+                    continue;
+                }
+
+                shooter.setVelocity(2000);
+
+                switch (Sstare) {
+
+                    case SIDLE:
+                        sortare.setPosition(Pozitii.aruncare1);
+                        m.kdf(300);
+
+                        for (int i = 0; i < 3; i++)
+                            ocupat[i] = (i < loculete);
+
+                        Sstare = SortareShooter.Incarca;
+                        break;
+
+                    case Incarca:
+                        if (idTag == 3) {
+                            cPattern[0] = 1;
+                            cPattern[1] = 1;
+                            cPattern[2] = 0;
+                        } /// mov mov verde
+                        else if (idTag == 2) {
+                            cPattern[0] = 1;
+                            cPattern[1] = 0;
+                            cPattern[2] = 1;
+                        } /// mov verde mov
+                        else if (idTag == 1) {
+                            cPattern[0] = 0;
+                            cPattern[1] = 1;
+                            cPattern[2] = 1;
+                        } ///verde mov mov
+                        else {
+                            Sstare = SortareShooter.GATA;
+                            break;
+                        }
+
+                        Sstare = SortareShooter.CautaSiImpuscai;
+                        break;
+
+                    case CautaSiImpuscai:
+
+                        for (int step = 0; step < 3 && loculete > 0; step++) {
+
+                            int need = cPattern[step];
+                            boolean tras = false;
+
+                            if (ocupat[0]) {
+                                sortare.setPosition(Pozitii.aruncare1);
+                                m.kdf(1000);
+
+                                boolean mov = color.green() <= Pozitii.mov_verde;
+                                boolean verde = !mov;
+
+                                if ((need == 1 && mov) || (need == 0 && verde)) {
+                                    Saruncare.setPosition(Pozitii.lansare);
+                                    m.kdf(150);
+                                    Saruncare.setPosition(Pozitii.coborare);
+
+                                    ocupat[0] = false;
+                                    loculete--;
+                                    tras = true;
+                                }
+                            }
+                            if (tras) continue;
+
+                            if (ocupat[1]) {
+                                sortare.setPosition(Pozitii.aruncare2);
+                                m.kdf(1000);
+
+                                boolean mov = color.green() <= Pozitii.mov_verde;
+                                boolean verde = !mov;
+
+                                if ((need == 1 && mov) || (need == 0 && verde)) {
+                                    Saruncare.setPosition(Pozitii.lansare);
+                                    m.kdf(150);
+                                    Saruncare.setPosition(Pozitii.coborare);
+
+                                    ocupat[1] = false;
+                                    loculete--;
+                                    tras = true;
+                                }
+                            }
+                            if (tras) continue;
+
+                            if (ocupat[2]) {
+                                sortare.setPosition(Pozitii.aruncare3);
+                                m.kdf(1000);
+
+                                boolean mov = color.green() <= Pozitii.mov_verde;
+                                boolean verde = !mov;
+
+                                if ((need == 1 && mov) || (need == 0 && verde)) {
+                                    Saruncare.setPosition(Pozitii.lansare);
+                                    m.kdf(150);
+                                    Saruncare.setPosition(Pozitii.coborare);
+
+                                    ocupat[2] = false;
+                                    loculete--;
+                                    tras = true;
+                                }
+                            }
+                            if (tras) continue;
+
+                            int FB = -1;
+                            if (ocupat[0]) FB = 0;
+                            else if (ocupat[1]) FB = 1;
+                            else if (ocupat[2]) FB = 2;
+
+                            if (FB != -1) {
+                                if (FB == 0) sortare.setPosition(Pozitii.aruncare1);
+                                if (FB == 1) sortare.setPosition(Pozitii.aruncare2);
+                                if (FB == 2) sortare.setPosition(Pozitii.aruncare3);
+
+                                m.kdf(650);
+
+                                Saruncare.setPosition(Pozitii.lansare);
+                                m.kdf(150);
+
+                                Saruncare.setPosition(Pozitii.coborare);
+
+                                ocupat[FB] = false;
+                                loculete--;
+                            }
+                        }
+
+                        Sstare = SortareShooter.GATA;
+                        break;
+
+                    case GATA:
+                        shooter.setVelocity(0);
+                        IntakeFull = false;
+
+                        if (ButonulRosu) {
+                            IntakeFull = true;
+                        }
+                        Sstare = SortareShooter.SIDLE;
+                        break;
                 }
             }
         }
     });
 
-    private final Thread Shooter = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            while (!stop) {
-                if (Spornit && IntakeFull) {
-                    PIDFCoefficients pid = new PIDFCoefficients(SkP, SkI, SkD, SkF);
-                    shooter.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, pid);
-                    shooter.setVelocity(2000);
-//                    do {
+
+
+    //                if (Spornit && IntakeFull && loculete > 0 && loculete <= 3) {
+//                    PIDFCoefficients pid = new PIDFCoefficients(SkP, SkI, SkD, SkF);
+//                    shooter.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, pid);
+//                    shooter.setVelocity(2000);
+//                    switch (Sstare) {
+//                        case SIDLE:
+//                            sortare.setPosition(Pozitii.aruncare1);
+//                            Sstare = SortareShooter.ID1;
+//                            break;
+//                        case ID1:
+//                            if (idTag == 1) {
+//
+//
+//                                Sstare = SortareShooter.Aruncare;
+//
+//                            } else {
+//                                Sstare = SortareShooter.ID2;
+//                                break;
+//                            }
+//                            break;
+//                        case ID2:
+//                            if (idTag == 2) {
+//
+//
+//                                Sstare = SortareShooter.Aruncare;
+//                            } else {
+//                                Sstare = SortareShooter.ID3;
+//                                break;
+//                            }
+//                            break;
+//                        case ID3:
+//                            if (idTag == 3) {
+//                                if(verde <= Pozitii.mov_verde && loculete == 3 ) {
+//                                    Saruncare.setPosition(Pozitii.lansare);
+//                                    loculete--;
+//                                    m.kdf(300);
+//                                    Saruncare.setPosition(Pozitii.coborare);
+//                                    sortare.setPosition(Pozitii.aruncare2);
+//                                }
+//                                else if(loculete==3 && verde >= Pozitii.mov_verde){
+//                                    Saruncare.setPosition(Pozitii.aruncare2);
+//                                }
+//                                if(verde <= Pozitii.mov_verde && loculete == 2){
+//                                    Saruncare.setPosition(Pozitii.lansare);
+//                                    loculete--;
+//                                    Saruncare.setPosition(Pozitii.coborare);
+//                                    sortare.setPosition(Pozitii.aruncare3);
+//                                }
+//                                if(verde >= Pozitii.mov_verde && loculete == 1){
+//                                    Saruncare.setPosition(Pozitii.lansare);
+//                                    loculete--;
+//                                    Saruncare.setPosition(Pozitii.coborare);
+//                                    sortare.setPosition(Pozitii.aruncare1);
+//                                }
+//                                Sstare = SortareShooter.Aruncare;
+//                            } else {
+//                                Sstare = SortareShooter.Aruncare;
+//                                break;
+//                            }
+//                            break;
+//                        case Aruncare:
+//
+//                            Sstare = SortareShooter.Gol;
+//                            break;
+//                        case Gol:
+//                            shooter.setVelocity(0);
+//                            IntakeFull = false;
+//                            Sstare = SortareShooter.SIDLE;
+//                            if (ButonulRosuS) {
+//                                IntakeFull = true;
+//
+//                            }
+//                            break;
+//                    }
+//                } else {
+//                    shooter.setVelocity(0);
+//                }
+//            }
+//        }
+//    });
+    //                    do {
 //                        shooter.setVelocity(2000);
 //
 //                        if (verde <= Pozitii.mov_verde) {
@@ -310,14 +503,9 @@ public class Tel extends OpMode {
 //                            sortare.setPosition(Pozitii.aruncare2);
 //                        }
 //                    } while (MiklosUngur && loculete >= 1 && loculete <= 3);
-                    shooter.setVelocity(0);
-
-                    sortare.setPosition(Pozitii.aruncare1);
-                }
-
-            }
-        }
-    });
+//            shooter.setVelocity(0);
+//
+//            sortare.setPosition(Pozitii.aruncare1);
     private final Thread Chassis = new Thread(new Runnable() {
         @Override
         public void run() {
@@ -372,7 +560,8 @@ public class Tel extends OpMode {
         telemetry.addData("Green", verde);
         telemetry.addData("Distanta", imata);
         telemetry.addData("loculete", loculete);
-        telemetry.addData("Case", Istare);
+        telemetry.addData("Case", Sstare);
+        telemetry.addData("pos", posU);
         telemetry.update();
 
     }

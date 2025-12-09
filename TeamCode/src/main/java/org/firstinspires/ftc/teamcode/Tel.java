@@ -33,7 +33,7 @@ public class Tel extends OpMode {
     //PIDF
     private final double TkP = 0.008, TkI = 0.0, TkD = 0.08, SkP = 10.23, SkI = 0.0, SkF = 14.95, SkD = 10.58;
     public boolean turelaTracking = false, tracking = false, ShooterPornit = false, Spornit = false, IntakeFull = false, Ipornit = false, IntakePornit = false, ButonulRosu = false, ResetareISortare = false, ResetareSSortare = false;
-    private double integral = 0, lastError = 0, imata, tx = 0, power = 0, posU;
+    private double integral = 0, lastError = 0, imata, tx = 0, power = 0, posU = Pozitii.max_sus;
     int pos, albastru = 0, rosu = 0, verde = 0, loculete = 0, idTag = 2;
 
 
@@ -119,7 +119,6 @@ public class Tel extends OpMode {
         @Override
         public void run() {
             while (!stop) {
-                posU = unghiS.getPosition();
 
                 /// Turela toggle
                 boolean dpad_right1 = gamepad1.dpad_right;
@@ -135,7 +134,7 @@ public class Tel extends OpMode {
                 if(gamepad1.dpad_down){
                     posU -= 0.003;
                 }
-                if(posU >= Pozitii.max_sus && posU <= Pozitii.max_jos) {
+                if(posU <= Pozitii.max_jos && posU >= Pozitii.max_sus) {
                     unghiD.setPosition(posU);
                     unghiS.setPosition(posU);
                 }
@@ -258,7 +257,7 @@ public class Tel extends OpMode {
         public void run() {
 
             while (!stop) {
-                double pozitii= Saruncare.getPosition();
+
                 if (!(Spornit && IntakeFull && loculete > 0 && loculete <= 3)) {
                     shooter.setVelocity(0);
                     Sstare = SortareShooter.SIDLE;
@@ -313,7 +312,7 @@ public class Tel extends OpMode {
 
                             if (ocupat[0]) {
                                 sortare.setPosition(Pozitii.aruncare1);
-                                m.kdf(950);
+                                m.kdf(1000);
 
                                 boolean mov = color.green() <= Pozitii.mov_verde;
                                 boolean verde = !mov;
@@ -330,9 +329,9 @@ public class Tel extends OpMode {
                             }
                             if (tras) continue;
 
-                            if (ocupat[1] && pozitii == Pozitii.coborare) {
+                            if (ocupat[1]) {
                                 sortare.setPosition(Pozitii.aruncare2);
-                                m.kdf(950);
+                                m.kdf(1000);
 
                                 boolean mov = color.green() <= Pozitii.mov_verde;
                                 boolean verde = !mov;
@@ -349,9 +348,9 @@ public class Tel extends OpMode {
                             }
                             if (tras) continue;
 
-                            if (ocupat[2] && pozitii == Pozitii.coborare) {
+                            if (ocupat[2]) {
                                 sortare.setPosition(Pozitii.aruncare3);
-                                m.kdf(950);
+                                m.kdf(1000);
 
                                 boolean mov = color.green() <= Pozitii.mov_verde;
                                 boolean verde = !mov;
@@ -378,7 +377,7 @@ public class Tel extends OpMode {
                                 if (FB == 1) sortare.setPosition(Pozitii.aruncare2);
                                 if (FB == 2) sortare.setPosition(Pozitii.aruncare3);
 
-                                m.kdf(1150);
+                                m.kdf(650);
 
                                 Saruncare.setPosition(Pozitii.lansare);
                                 m.kdf(150);
@@ -408,6 +407,105 @@ public class Tel extends OpMode {
     });
 
 
+
+    //                if (Spornit && IntakeFull && loculete > 0 && loculete <= 3) {
+//                    PIDFCoefficients pid = new PIDFCoefficients(SkP, SkI, SkD, SkF);
+//                    shooter.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, pid);
+//                    shooter.setVelocity(2000);
+//                    switch (Sstare) {
+//                        case SIDLE:
+//                            sortare.setPosition(Pozitii.aruncare1);
+//                            Sstare = SortareShooter.ID1;
+//                            break;
+//                        case ID1:
+//                            if (idTag == 1) {
+//
+//
+//                                Sstare = SortareShooter.Aruncare;
+//
+//                            } else {
+//                                Sstare = SortareShooter.ID2;
+//                                break;
+//                            }
+//                            break;
+//                        case ID2:
+//                            if (idTag == 2) {
+//
+//
+//                                Sstare = SortareShooter.Aruncare;
+//                            } else {
+//                                Sstare = SortareShooter.ID3;
+//                                break;
+//                            }
+//                            break;
+//                        case ID3:
+//                            if (idTag == 3) {
+//                                if(verde <= Pozitii.mov_verde && loculete == 3 ) {
+//                                    Saruncare.setPosition(Pozitii.lansare);
+//                                    loculete--;
+//                                    m.kdf(300);
+//                                    Saruncare.setPosition(Pozitii.coborare);
+//                                    sortare.setPosition(Pozitii.aruncare2);
+//                                }
+//                                else if(loculete==3 && verde >= Pozitii.mov_verde){
+//                                    Saruncare.setPosition(Pozitii.aruncare2);
+//                                }
+//                                if(verde <= Pozitii.mov_verde && loculete == 2){
+//                                    Saruncare.setPosition(Pozitii.lansare);
+//                                    loculete--;
+//                                    Saruncare.setPosition(Pozitii.coborare);
+//                                    sortare.setPosition(Pozitii.aruncare3);
+//                                }
+//                                if(verde >= Pozitii.mov_verde && loculete == 1){
+//                                    Saruncare.setPosition(Pozitii.lansare);
+//                                    loculete--;
+//                                    Saruncare.setPosition(Pozitii.coborare);
+//                                    sortare.setPosition(Pozitii.aruncare1);
+//                                }
+//                                Sstare = SortareShooter.Aruncare;
+//                            } else {
+//                                Sstare = SortareShooter.Aruncare;
+//                                break;
+//                            }
+//                            break;
+//                        case Aruncare:
+//
+//                            Sstare = SortareShooter.Gol;
+//                            break;
+//                        case Gol:
+//                            shooter.setVelocity(0);
+//                            IntakeFull = false;
+//                            Sstare = SortareShooter.SIDLE;
+//                            if (ButonulRosuS) {
+//                                IntakeFull = true;
+//
+//                            }
+//                            break;
+//                    }
+//                } else {
+//                    shooter.setVelocity(0);
+//                }
+//            }
+//        }
+//    });
+    //                    do {
+//                        shooter.setVelocity(2000);
+//
+//                        if (verde <= Pozitii.mov_verde) {
+//                            m.kdf(980);
+//                            Saruncare.setPosition(Pozitii.lansare);
+//                            loculete--;
+//                            m.kdf(2000);
+//                            Saruncare.setPosition(Pozitii.coborare);
+//
+//
+//                        } else if (verde != Pozitii.mov_verde) {
+//                            sortare.setPosition(Pozitii.aruncare2);
+//                        }
+//                    } while (MiklosUngur && loculete >= 1 && loculete <= 3);
+//            shooter.setVelocity(0);
+//
+//            sortare.setPosition(Pozitii.aruncare1);
     private final Thread Chassis = new Thread(new Runnable() {
         @Override
         public void run() {

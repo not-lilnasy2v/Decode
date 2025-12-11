@@ -18,7 +18,7 @@ public class servoGasire extends LinearOpMode {
     public void runOpMode() {
 
 //        sortare = hardwareMap.get(ServoImplEx.class, "sortare");
-//        aruncare = hardwareMap.get(ServoImplEx.class, "aruncare");
+//       aruncare = hardwareMap.get(ServoImplEx.class, "aruncare");
         unghiD = hardwareMap.get(ServoImplEx.class, "unghiD");
         unghiS = hardwareMap.get(ServoImplEx.class, "unghiS");
 //        turela = hardwareMap.get(DcMotorEx.class, "turela");

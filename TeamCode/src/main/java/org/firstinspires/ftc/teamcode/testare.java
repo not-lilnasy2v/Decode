@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
@@ -10,9 +11,7 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 @Disabled
 
 public class testare extends LinearOpMode {
-
     private DcMotorEx shooter;
-
     public final   double P = 10.23;
     public final double I = 0.0;
     public final  double D = 10.58;
@@ -22,6 +21,8 @@ public class testare extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         shooter = hardwareMap.get(DcMotorEx.class, "shooter");
+        shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        shooter.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
 
         waitForStart();
 
